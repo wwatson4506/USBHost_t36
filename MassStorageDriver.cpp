@@ -110,6 +110,8 @@ bool msController::claim(Device_t *dev, int type, const uint8_t *descriptors, ui
 	deviceAddress = dev->address;
 	hubPort = dev->hub_port; // Used for device ID with multiple drives.
 
+	memset(&msDriveInfo, 0, sizeof(msDriveInfo_t));
+
 	msOutCompleted = false;
 	msInCompleted = false;
 	msControlCompleted = false;
@@ -129,8 +131,6 @@ void msController::disconnect()
 {
 	deviceAvailable = false;
 	println("Device Disconnected...");
-	msDriveInfo.connected = false;
-	msDriveInfo.initialized = false;
 	memset(&msDriveInfo, 0, sizeof(msDriveInfo_t));
 
 #ifdef DBGprint
