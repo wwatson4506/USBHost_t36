@@ -2140,6 +2140,7 @@ private:
 //--------------------------------------------------------------------------
 
 #include <SdFat.h>
+
 // Use FILE_READ & FILE_WRITE as defined by FS.h
 #if defined(FILE_READ) && !defined(FS_H)
 #undef FILE_READ
@@ -2194,13 +2195,10 @@ protected:
 	static bool s_any_fs_changed_state;
 };
 
-
-
 class USBDrive : public USBDriver, public FsBlockDeviceInterface {
 public:
 	USBDrive(USBHost &host) { init(); }
 	USBDrive(USBHost *host) { init(); }
-
 
 	msSCSICapacity_t msCapacity;
 	msInquiryResponse_t msInquiry;
@@ -2257,7 +2255,7 @@ public:
 	void printExtendedPartition(MbrSector_t *mbr, uint8_t ipExt, Print &Serialx);
 	uint32_t printGUIDPartitionTable(Print &Serialx);
 
-	enum {INVALID_VOL=0, MBR_VOL, EXT_VOL, GPT_VOL}; // what type of volume did the mapping return
+	enum {INVALID_VOL=0, MBR_VOL, EXT_VOL, GPT_VOL, EXT4_VOL}; // what type of volume did the mapping return
 	int findPartition(int partition, int &type, uint32_t &firstSector, uint32_t &numSectors, 
 				   uint32_t &mbrLBA, uint8_t &mbrPart, uint8_t *guid=nullptr);
 
@@ -2368,7 +2366,6 @@ private:
 	static bool s_connected_filesystems_changed;
 	static int s_when_to_update; // default to Task()
 	USBDrive *_next_drive = nullptr;
-
 };
 
 #define MSC_MAX_FILENAME_LEN 256
@@ -2569,9 +2566,6 @@ public:
 	USBDrive *device;
 	int partition;
 	int partitionType;
-
-
-
 };
 
 // do not expose these defines in Arduino sketches or other libraries

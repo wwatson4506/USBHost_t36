@@ -1234,6 +1234,7 @@ int USBDrive::findPartition(int partition, int &type, uint32_t &firstSector, uin
 	partition--;  // zero bias it. 
 	if (!readSector(0, (uint8_t*)&sector.mbr)) return INVALID_VOL;
 	MbrPart_t *pt = &sector.mbr.part[0];
+
 	if (pt->type == 0xee) {
 		// See if we have already cached number of partitions
 		if (_cGPTParts == 0) {
@@ -1276,9 +1277,16 @@ int USBDrive::findPartition(int partition, int &type, uint32_t &firstSector, uin
 		}
    		return INVALID_VOL;
 	}
+
 	if (partition >= 0 && partition <= 3) {
 		// Master Boot Record
 		pt = &sector.mbr.part[partition];
+
+		// Added for EXT4 partition types
+		if(pt->type == 0x83) {
+			type = pt->type;
+			return EXT4_VOL; // EXT2/3/4 type.
+		}
         // try quick way through
       	if (((pt->boot == 0) || (pt->boot == 0X80)) && (pt->type != 0) && (pt->type != 0xf)) {
 			type = pt->type;
@@ -1324,7 +1332,7 @@ int USBDrive::findPartition(int partition, int &type, uint32_t &firstSector, uin
 	mbrLBA = next_mbr;
 	mbrPart = 0; // zero based
     return EXT_VOL;
-  }
+}
 
 
 
@@ -1343,7 +1351,6 @@ bool USBDrive::startFilesystems()
 	bool file_system_claimed = false;
 	uint32_t mbrLBA;
 	uint8_t mbrPart;
-
 	uint8_t guid[16];
 
 	DBGPrintf(">> USBDrive::startFilesystems called %p\n", this);
@@ -1502,7 +1509,7 @@ bool USBFilesystem::begin(USBDrive *pDrive, bool setCwv, uint8_t part) {
 	}
 
 	if (mscfs.begin(pDrive, setCwv, firstSector, numSectors)) {
-		device->filesystem_assign_to_drive(this, true);
+		//device->filesystem_assign_to_drive(this, true);
 	}
 	return true;
 }
@@ -1522,6 +1529,20 @@ bool USBFilesystem::claimPartition(USBDrive *pdevice, int part,int voltype, int 
 	// For GUID file systems only continue if this is a guid to a type we know. 
 	if (!check_voltype_guid(voltype, guid)) return false; // not something we understand;
 
+	//-----------------------------------------------------
+	// Added for EXT4_VOL type.
+	//-----------------------------------------------------
+	if (type == 0x83) {
+		device = pdevice;
+		partition = part;
+		partitionType = type;
+		_state_changed = USBFS_STATE_CHANGE_CONNECTION;
+		s_any_fs_changed_state = true;
+		DBGPrintf("+ Claimed\n");
+		return true;
+	}
+	//-----------------------------------------------------
+
 	if (mscfs.begin(pdevice, true, firstSector, numSectors)) {
 		device = pdevice;
 		partition = part;
@@ -1537,6 +1558,7 @@ bool USBFilesystem::claimPartition(USBDrive *pdevice, int part,int voltype, int 
 
 void USBFilesystem::releasePartition() {
 	DBGPrintf("\t USBFilesystem::releasePartition %p called\n");
+	partitionType = 0;
 	end();
 }
 
@@ -1579,3 +1601,4 @@ bool USBFilesystem::format(int type, char progressChar, Print& pr) {
 	}
 	return ret;
 }
+
